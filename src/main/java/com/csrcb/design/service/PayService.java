@@ -1,8 +1,10 @@
 package com.csrcb.design.service;
 
-import com.csrcb.design.component.PayHandler;
+import com.csrcb.design.component.PayContext;
+import com.csrcb.design.inter.BkPayStrategy;
+import com.csrcb.design.inter.WxPayStrategy;
+import com.csrcb.design.inter.ZfbPayStrategy;
 import com.csrcb.design.pojo.PayBody;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -12,21 +14,20 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class PayService {
-    @Autowired
-    private PayHandler payHandler;
 
     public Boolean pay(PayBody payBody){
         // 书写付款逻辑
         boolean flag = false;
         if (payBody.getType() == 0){
             // 支付宝
-            flag = payHandler.zfbPay(payBody);
+//            flag = payHandler.zfbPay(payBody);
+            flag = new PayContext(new ZfbPayStrategy()).execute(payBody);
         } else if (payBody.getType() == 1){
             // wechat
-            flag = payHandler.wxPay(payBody);
+            flag = new PayContext(new WxPayStrategy()).execute(payBody);
         } else if (payBody.getType() == 2){
             // bank
-            flag = payHandler.bkPay(payBody);
+            flag = new PayContext(new BkPayStrategy()).execute(payBody);
         } else {
             throw new UnsupportedOperationException("Unsupport type, please choose 0,1,2");
         }
