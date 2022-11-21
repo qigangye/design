@@ -45,7 +45,67 @@ if (payBody.getType() == 0){
 * 所有的策略类都需要对外暴露
 > 上层模块必须知道哪些策略，然后才能决定使用那一个策略，这与迪米特法则相违背，我只是想使用了一个策略，凭什么就要了解这个策略？封装类还有什么意义？<br/>
 
+## 策略模式+工厂模式+枚举
+枚举类包含策略的全限定路径
+```java
+public enum StrategyEnum {
+    ZfbPayStrategy("com.csrcb.design.pay.strategy.ZfbPayStrategy"),
+    WxPayStrategy("com.csrcb.design.pay.strategy.WxPayStrategy"),
+    BkPayStrategy("com.csrcb.design.pay.strateg.BkPayStrategy");
 
+    String value = "";
+    StrategyEnum(String value){
+        this.value = value;
+    }
+
+    public String getValue() {
+        return this.value;
+    }
+}
+```
+工厂类依靠策略枚举返回策略类
+```java
+public class StrategyFactory {
+    public static PayStrategy getPayStrategy(StrategyEnum strategyEnum){
+        PayStrategy payStrategy = null;
+        try {
+            payStrategy = (PayStrategy) Class.forName(strategyEnum.getValue()).newInstance();
+        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+            //异常
+            throw new RuntimeException(e);
+        }
+        return null;
+    }
+}
+```
+```java
+class PayService{
+    //...
+    public Boolean pay(PayBody payBody){
+        // 书写付款逻辑
+        boolean flag = false;
+        if (payBody.getType() == 0){
+            // 支付宝
+//            flag = payHandler.zfbPay(payBody);
+            flag = new PayContext(StrategyFactory.getPayStrategy(StrategyEnum.ZfbPayStrategy)).execute(payBody);
+        } else if (payBody.getType() == 1){
+            // wechat
+            flag = new PayContext(StrategyFactory.getPayStrategy(StrategyEnum.WxPayStrategy)).execute(payBody);
+        } else if (payBody.getType() == 2){
+            // bank
+            flag = new PayContext(StrategyFactory.getPayStrategy(StrategyEnum.BkPayStrategy)).execute(payBody);
+        } else {
+            throw new UnsupportedOperationException("Unsupport type, please choose 0,1,2");
+        }
+        if (flag) {
+            // 如果是true，保存到db
+            saveToDb(payBody);
+        }
+        return flag;
+    }
+    //...
+}
+```
 
 
 
