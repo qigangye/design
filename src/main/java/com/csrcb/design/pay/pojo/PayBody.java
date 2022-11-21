@@ -1,4 +1,4 @@
-package com.csrcb.design.pojo;
+package com.csrcb.design.pay.pojo;
 
 /**
  * @Classname PayBody

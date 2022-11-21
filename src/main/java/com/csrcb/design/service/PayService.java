@@ -1,9 +1,10 @@
 package com.csrcb.design.service;
 
+import com.csrcb.design.pay.facade.StrategyFacade;
 import com.csrcb.design.pay.strategyContext.PayContext;
 import com.csrcb.design.pay.strategyEnum.StrategyEnum;
 import com.csrcb.design.pay.strategyFactory.StrategyFactory;
-import com.csrcb.design.pojo.PayBody;
+import com.csrcb.design.pay.pojo.PayBody;
 import org.springframework.stereotype.Service;
 
 /**
@@ -14,22 +15,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class PayService {
 
+    // 后续对于付款模块的删除或增加或修改，无需改动service
+    // 不会对调用层产生任何代码的改动
+    // 调用层使用pay模块，无需关系实现的逻辑，只需要将入参传递给pay模块即可
     public Boolean pay(PayBody payBody){
         // 书写付款逻辑
         boolean flag = false;
-        if (payBody.getType() == 0){
-            // 支付宝
-//            flag = payHandler.zfbPay(payBody);
-            flag = new PayContext(StrategyFactory.getPayStrategy(StrategyEnum.ZfbPayStrategy)).execute(payBody);
-        } else if (payBody.getType() == 1){
-            // wechat
-            flag = new PayContext(StrategyFactory.getPayStrategy(StrategyEnum.WxPayStrategy)).execute(payBody);
-        } else if (payBody.getType() == 2){
-            // bank
-            flag = new PayContext(StrategyFactory.getPayStrategy(StrategyEnum.BkPayStrategy)).execute(payBody);
-        } else {
-            throw new UnsupportedOperationException("Unsupport type, please choose 0,1,2");
-        }
+        flag = StrategyFacade.pay(payBody);
         if (flag) {
             // 如果是true，保存到db
             saveToDb(payBody);

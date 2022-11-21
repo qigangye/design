@@ -1,7 +1,7 @@
 package com.csrcb.design.pay.strategyContext;
 
 import com.csrcb.design.pay.strategy.PayStrategy;
-import com.csrcb.design.pojo.PayBody;
+import com.csrcb.design.pay.pojo.PayBody;
 
 /**
  * @Classname PayContext

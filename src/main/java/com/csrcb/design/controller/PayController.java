@@ -1,6 +1,6 @@
 package com.csrcb.design.controller;
 
-import com.csrcb.design.pojo.PayBody;
+import com.csrcb.design.pay.pojo.PayBody;
 import com.csrcb.design.service.PayService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
