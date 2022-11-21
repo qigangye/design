@@ -1,4 +1,4 @@
-package com.csrcb.design.component;
+package com.csrcb.design.pay.strategyContext;
 
 import com.csrcb.design.pay.strategy.PayStrategy;
 import com.csrcb.design.pojo.PayBody;

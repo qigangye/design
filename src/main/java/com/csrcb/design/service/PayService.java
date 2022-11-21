@@ -1,9 +1,8 @@
 package com.csrcb.design.service;
 
-import com.csrcb.design.component.PayContext;
-import com.csrcb.design.inter.BkPayStrategy;
-import com.csrcb.design.inter.WxPayStrategy;
-import com.csrcb.design.inter.ZfbPayStrategy;
+import com.csrcb.design.pay.strategyContext.PayContext;
+import com.csrcb.design.pay.strategyEnum.StrategyEnum;
+import com.csrcb.design.pay.strategyFactory.StrategyFactory;
 import com.csrcb.design.pojo.PayBody;
 import org.springframework.stereotype.Service;
 
@@ -21,13 +20,13 @@ public class PayService {
         if (payBody.getType() == 0){
             // 支付宝
 //            flag = payHandler.zfbPay(payBody);
-            flag = new PayContext(new ZfbPayStrategy()).execute(payBody);
+            flag = new PayContext(StrategyFactory.getPayStrategy(StrategyEnum.ZfbPayStrategy)).execute(payBody);
         } else if (payBody.getType() == 1){
             // wechat
-            flag = new PayContext(new WxPayStrategy()).execute(payBody);
+            flag = new PayContext(StrategyFactory.getPayStrategy(StrategyEnum.WxPayStrategy)).execute(payBody);
         } else if (payBody.getType() == 2){
             // bank
-            flag = new PayContext(new BkPayStrategy()).execute(payBody);
+            flag = new PayContext(StrategyFactory.getPayStrategy(StrategyEnum.BkPayStrategy)).execute(payBody);
         } else {
             throw new UnsupportedOperationException("Unsupport type, please choose 0,1,2");
         }
