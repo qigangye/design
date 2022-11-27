@@ -185,3 +185,108 @@ public Boolean pay(PayBody payBody){
 > 2. 用户所在的城市是否在业务投放城市
 > 3. 用户近期所购买的产品是否符合业务投放人群
 > 4. 新用户首次购买投放指定业务
+## 定义
+使多个对象都有机会处理请求，从而避免了请求的发送者和接受者之间的耦合关系。将这些对象连成一条链，并沿着这条链传递该请求，直到有对象处理它为止
+> 责任链模式的核心在「链」上，「链」是由多个处理者ConcreteHandler组成的
+```java
+// 定义一个抽象的handler
+public abstract class Handler{
+    private Handler nextHandler;//指向下一个处理者
+    private int level;//处理者能够处理的级别。为我们提供了一些拓展的可能性
+    public Handler(int level){
+        this.level = level;
+    }
+    public void setNextHandler(Handler handler){
+        this.nextHandler = handler;
+    }
+    //抽象方法，子类实现
+    public abstract void execute(Request request);
+}
+```
+## 方案
+1. 创建一个handler的抽象类
+```java
+public abstract class AbstractSuggestBusinessHandler {
+    /**
+     * @param userInfo 用户信息
+     * @param suggestLists 当前用户需要被投放的业务
+     */
+    abstract void processHandler(UserInfo userInfo, List<String> suggestLists);
+}
+```
+2. 创建对应的具体的实现
+```java
+public class PersonalCheckHandler extends AbstractSuggestBusinessHandler{
+    @Override
+    public void processHandler(UserInfo userInfo, List<String> suggestLists) {
+        // 模拟：通过个人资质的check，我们找到了4个可以投放的业务，放到 suggestLists 中。
+        suggestLists.add("1");
+        suggestLists.add("2");
+        suggestLists.add("3");
+        suggestLists.add("4");
+    }
+}
+```
+```java
+public class CityCheckHandler extends AbstractSuggestBusinessHandler{
+    @Override
+    public void processHandler(UserInfo userInfo, List<String> suggestLists) {
+        // 通过userInfo 获取city属性
+        String city = userInfo.getCity();
+        // 通过 city 和之前保留的 4 个业务信息进行对比，然后筛选出剩余的 3 个业务投放
+        suggestLists.remove("1");
+    }
+}
+```
+```java
+public class RecentCheckHandler extends AbstractSuggestBusinessHandler{
+    @Override
+    public void processHandler(UserInfo userInfo, List<String> suggestLists) {
+        // 通过 userInfo 获取 近期购买的产品信息buyProducts 属性
+        List<String> buyProducts = userInfo.getBuyProducts();
+        // 通过 buyProducts 和之前保留的 3 个业务信息进行对比，然后筛选出剩余的 2 个业务投放
+        suggestLists.remove("2");
+    }
+}
+```
+```java
+public class NewUserCheckHandler extends AbstractSuggestBusinessHandler{
+    @Override
+    public void processHandler(UserInfo userInfo, List<String> suggestLists) {
+        // 通过 userInfo 获取 新用户标志 isNewUser 属性
+        boolean newUser = userInfo.isNewUser();
+        if (newUser) {
+            suggestLists = new ArrayList<>(); // 特定的新用户奖励
+        }
+    }
+}
+```
+3. 编写调用执行handler类
+```java
+@Component
+public class SuggestBusinessHandlerProcess {
+    @Value("#{'${suggest.business.handler}'.split(',')}")
+    private List<String> handlers;
+
+    public void process(UserInfo userInfo, List<String> suggestLists){
+        // 如果想要实时的进行顺序的调整或者是增减，那必须要使用配置中心进行配置
+        // 比如springcloud里面自带的git这种方式配置； applo 配置中心。
+        for (String handler : handlers){
+            try {
+                AbstractSuggestBusinessHandler handle = (AbstractSuggestBusinessHandler) Class.forName(handler).newInstance();
+                handle.processHandler(userInfo, suggestLists);
+            } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+}
+```
+在配置中心编写，对应的顺序，业务自行在配置中心配置顺序或者增减业务handler
+```properties
+## 比喻成配置中心
+suggest.business.handler=com.csrcb.design.handler.PersonalCheckHandler,com.csrcb.design.handler.CityCheckHandler,com.csrcb.design.handler.RecentCheckHandler,com.csrcb.design.handler.NewUserCheckHandler
+```
+## 优缺点
+* 责任链模式非常显著的优点是将请求和处理分开。请求者可以不知道是谁出里的，处理者可以不用知道请求的全貌，两者解耦，提高系统的灵活性
+* 责任链的缺点：一是性能问题，每个请求都是从链头遍历到链尾，特别是链比较长的时候，性能是一个非常大的问题；二是调试不方便，特别是链条比较长、环节比较多的时候。
