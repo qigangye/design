@@ -1,9 +1,6 @@
 package com.csrcb.design.service;
 
 import com.csrcb.design.pay.facade.StrategyFacade;
-import com.csrcb.design.pay.strategyContext.PayContext;
-import com.csrcb.design.pay.strategyEnum.StrategyEnum;
-import com.csrcb.design.pay.strategyFactory.StrategyFactory;
 import com.csrcb.design.pay.pojo.PayBody;
 import org.springframework.stereotype.Service;
 
@@ -13,7 +10,7 @@ import org.springframework.stereotype.Service;
  * @Created by gangye
  */
 @Service
-public class PayService {
+public class OrderService {
 
     // 后续对于付款模块的删除或增加或修改，无需改动service
     // 不会对调用层产生任何代码的改动

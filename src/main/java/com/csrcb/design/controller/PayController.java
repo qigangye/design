@@ -1,7 +1,7 @@
 package com.csrcb.design.controller;
 
 import com.csrcb.design.pay.pojo.PayBody;
-import com.csrcb.design.service.PayService;
+import com.csrcb.design.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class PayController {
     @Autowired
-    private PayService payService;
+    private OrderService payService;
 
     @PostMapping("/pay")
     public Boolean pay(@RequestBody PayBody payBody){

@@ -295,3 +295,134 @@ suggest.business.handler=com.csrcb.design.handler.PersonalCheckHandler,com.csrcb
 ## 优缺点
 * 责任链模式非常显著的优点是将请求和处理分开。请求者可以不知道是谁出里的，处理者可以不用知道请求的全貌，两者解耦，提高系统的灵活性
 * 责任链的缺点：一是性能问题，每个请求都是从链头遍历到链尾，特别是链比较长的时候，性能是一个非常大的问题；二是调试不方便，特别是链条比较长、环节比较多的时候。
+# 状态模式 + 观察者模式
+> 项目需求：用户从开始下订单，到支付完成，再到物流发货，最终用户确认收货；整个流程涉及到很多订单状态，需要通过代码对订单状态进行管理。
+> 此外，用户或物流部门每一次触发的不同操作都有可能改变订单状态（如：用户创建订单操作导致订单状态为待支付状态；用户支付操作导致订单状态为待发货状态；物流部门发货操作导致订单状态为待收货状态；哟怒胡确认收货导致订单状态为订单完成状态）。
+> * 用户创建订单——>支付订单——>发货——>收货——>订单完成
+> * 要求：
+> * 1. 创建订单后，订单状态初始化为待支付；
+> * 2. 订单状态包括：待支付、待发货、待收货、订单完成；（`状态模式`）
+> * 3. 触发订单状态的操作：支付订单、发货、确认收货（`观察者模式`）
+
+引入spring的状态机的相关pom依赖
+```xml
+<dependency>
+    <groupId>org.springframework.statemachine</groupId>
+    <artifactId>spring-statemachine-core</artifactId>
+    <version>2.2.3.RELEASE</version>
+</dependency>
+```
+订单、订单状态的枚举、订单状态转化的事件的枚举
+```java
+// 状态转化的一个控制机。状态机：初始化状态；配置我们所有状态之间的转化关系；一些持久化的操作（如：redis）
+public class Order {
+    private String orderId;
+    // 订单状态
+    private OrderState orderState;
+
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
+    }
+
+    public OrderState getOrderState() {
+        return orderState;
+    }
+
+    public void setOrderState(OrderState orderState) {
+        this.orderState = orderState;
+    }
+}
+```
+```java
+public enum OrderState {
+    ORDER_WAIT_PAY,//待支付
+    ORDER_WAIT_SEND,// 待发货
+    ORDER_WAIT_RECEIVE,// 待收货
+    ORDER_FINISH; // 订单完成
+}
+```
+```java
+public enum OrderStateChangeAction {
+    PAY_ORDER,// 支付操作
+    SEND_ORDER,// 发货操作
+    RECEIVE_ORDER;// 收货操作
+}
+```
+使用Spring状态机的配置
+```java
+@Configuration
+@EnableStateMachine(name = "orderStateMachine")
+public class OrderStateMachineConfig extends StateMachineConfigurerAdapter<OrderState, OrderStateChangeAction> {
+    // 初始化状态；
+    public void configure(StateMachineStateConfigurer<OrderState, OrderStateChangeAction> states) throws Exception {
+        states.withStates().initial(OrderState.ORDER_WAIT_PAY)
+                .states(EnumSet.allOf(OrderState.class));
+    }
+
+    // 配置我们所有状态之间的转化关系；
+    public void configure(StateMachineTransitionConfigurer<OrderState, OrderStateChangeAction> transitions) throws Exception {
+        transitions.withExternal().source(OrderState.ORDER_WAIT_PAY)
+                .target(OrderState.ORDER_WAIT_SEND)
+                .event(OrderStateChangeAction.PAY_ORDER)
+                .and()
+                .withExternal().source(OrderState.ORDER_WAIT_SEND)
+                .target(OrderState.ORDER_WAIT_RECEIVE)
+                .event(OrderStateChangeAction.SEND_ORDER)
+                .and()
+                .withExternal().source(OrderState.ORDER_WAIT_RECEIVE)
+                .target(OrderState.ORDER_FINISH)
+                .event(OrderStateChangeAction.RECEIVE_ORDER);
+    }
+
+    // 配置状态机持久化
+    @Bean
+    public DefaultStateMachinePersister machinePersister(){
+        return new DefaultStateMachinePersister(new StateMachinePersist<Object, Object, Order>() {
+            @Override
+            public void write(StateMachineContext<Object, Object> stateMachineContext, Order order) throws Exception {
+                // 持久化操作，可以通过任何形式持久化。redis、mongodb、mysql、ecache
+            }
+
+            @Override
+            public StateMachineContext<Object, Object> read(Order order) throws Exception {
+                // 本来应该从持久化组件里进行读取的，但是没有做持久化
+                return new DefaultStateMachineContext(order.getOrderState(), null, null, null);
+            }
+        });
+    }
+}
+```
+使用监听
+```java
+// 监听器是监听到action后进行状态的变更
+@Component("orderStateListener")
+@WithStateMachine(name = "orderStateMachine")
+public class OrderStateListener {
+    @OnTransition(source = "ORDER_WAIT_PAY", target = "ORDER_WAIT_SEND")
+    public boolean payToSend(Message<OrderStateChangeAction> message){
+        Order order = (Order) message.getHeaders().get("order");
+        order.setOrderState(OrderState.ORDER_WAIT_SEND);
+        return true;
+    }
+
+    @OnTransition(source = "ORDER_WAIT_SEND", target = "ORDER_WAIT_RECEIVE")
+    public boolean sendToReceive(Message<OrderStateChangeAction> message){
+        Order order = (Order) message.getHeaders().get("order");
+        order.setOrderState(OrderState.ORDER_WAIT_RECEIVE);
+        return true;
+    }
+
+    @OnTransition(source = "ORDER_WAIT_RECEIVE", target = "ORDER_FINISH")
+    public boolean receiveToFinish(Message<OrderStateChangeAction> message){
+        Order order = (Order) message.getHeaders().get("order");
+        order.setOrderState(OrderState.ORDER_FINISH);
+        return true;
+    }
+}
+```
+
+
