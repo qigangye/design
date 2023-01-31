@@ -303,7 +303,7 @@ suggest.business.handler=com.csrcb.design.handler.PersonalCheckHandler,com.csrcb
 > * 1. 创建订单后，订单状态初始化为待支付；
 > * 2. 订单状态包括：待支付、待发货、待收货、订单完成；（`状态模式`）
 > * 3. 触发订单状态的操作：支付订单、发货、确认收货（`观察者模式`）
-
+## 项目工程实现
 引入spring的状态机的相关pom依赖
 ```xml
 <dependency>
@@ -316,15 +316,15 @@ suggest.business.handler=com.csrcb.design.handler.PersonalCheckHandler,com.csrcb
 ```java
 // 状态转化的一个控制机。状态机：初始化状态；配置我们所有状态之间的转化关系；一些持久化的操作（如：redis）
 public class Order {
-    private String orderId;
+    private Integer orderId;
     // 订单状态
     private OrderState orderState;
 
-    public String getOrderId() {
+    public Integer getOrderId() {
         return orderId;
     }
 
-    public void setOrderId(String orderId) {
+    public void setOrderId(Integer orderId) {
         this.orderId = orderId;
     }
 
@@ -424,5 +424,193 @@ public class OrderStateListener {
     }
 }
 ```
+## 客户端测试
+### 订单服务层实现
+```java
+@Service
+public class OrderService {
+    @Autowired
+    private StateMachine<OrderState, OrderStateChangeAction> orderStateMachine;
 
+    @Autowired
+    private StateMachinePersister<OrderState, OrderStateChangeAction, Order> stateMachinePersister;
 
+    // 模拟一个存储（示例，不做连接数据库展示）
+    private List<Order> orders = new ArrayList<>();
+    public Order createOrder(Integer oid) {
+        Order order = new Order();
+        order.setOrderState(OrderState.ORDER_WAIT_PAY);
+        order.setOrderId(oid);
+        // 创建的order持久化至数据库中，防止下次访问的时候查询不到
+        orders.add(order);//模拟存储到DB
+        return order;
+    }
+
+    // 后续对于付款模块的删除或增加或修改，无需改动service
+    // 不会对调用层产生任何代码的改动
+    // 调用层使用pay模块，无需关系实现的逻辑，只需要将入参传递给pay模块即可
+    public Order pay(PayBody payBody){
+        // 书写付款逻辑
+        boolean flag = false;
+        flag = StrategyFacade.pay(payBody);
+        if (flag) {
+            Order order = orders.get(0);// 模拟从DB获取的数据
+            Message message = MessageBuilder.withPayload(OrderStateChangeAction.PAY_ORDER).setHeader("order", order).build();
+            // 发送消息
+            if (changeStateAction(message, order)){
+                return order;
+            }
+            // 如果是true，保存到db
+            saveToDb(payBody);
+        }
+        return null;
+    }
+
+    private void saveToDb(PayBody payBody) {
+    }
+
+    public Order send(Integer oid) {
+        Order order = orders.get(0);// 模拟从DB获取的数据
+        Message message = MessageBuilder.withPayload(OrderStateChangeAction.SEND_ORDER).setHeader("order", order).build();
+        if (changeStateAction(message, order)){
+            return order;
+        }
+        return null;
+    }
+
+    public Order receive(Integer oid) {
+        Order order = orders.get(0);// 模拟从DB获取的数据
+        Message message = MessageBuilder.withPayload(OrderStateChangeAction.RECEIVE_ORDER).setHeader("order", order).build();
+        if (changeStateAction(message, order)){
+            return order;
+        }
+        return null;
+    }
+
+    /**
+     * 发送订单状态转换事件
+     * @param message
+     * @param order
+     * @return
+     */
+    private boolean changeStateAction(Message<OrderStateChangeAction> message, Order order){
+        try {
+            orderStateMachine.start();
+            stateMachinePersister.restore(orderStateMachine, order);// 状态机状态的恢复，restore是取
+            boolean res = orderStateMachine.sendEvent(message);
+            stateMachinePersister.persist(orderStateMachine, order);// 状态机状态的存储，persist是存
+            return res;
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            orderStateMachine.stop();
+        }
+        return false;
+    }
+}
+```
+### 服务接口提供
+```java
+@RestController
+public class OrderController {
+    @Autowired
+    private OrderService orderService;
+
+    /**
+     * 创建订单
+     * @param oid
+     * @return
+     */
+    @GetMapping("/mkOrder")
+    public Order createOrder(@RequestParam("oid") Integer oid){
+        return orderService.createOrder(oid);
+    }
+
+    /**
+     * 支付订单
+     * @param payBody
+     * @return
+     */
+    @PostMapping("/pay")
+    public Order payOrder(@RequestBody PayBody payBody){
+        return orderService.pay(payBody);
+    }
+
+    /**
+     * 发送订单
+     * @param oid
+     * @return
+     */
+    @GetMapping("/send")
+    public Order send(@RequestParam("oid") Integer oid){
+        return orderService.send(oid);
+    }
+
+    /**
+     * 确认订单收货
+     * @param oid
+     * @return
+     */
+    @GetMapping("/receive")
+    public Order receive(@RequestParam("oid") Integer oid){
+        return orderService.receive(oid);
+    }
+}
+```
+### 客户端http发起请求
+#### 创建订单
+请求调用
+```
+GET http://localhost:8080/mkOrder?oid=12
+```
+响应报文
+```json
+{
+  "orderId": 12,
+  "orderState": "ORDER_WAIT_PAY"
+}
+```
+#### 支付订单
+请求调用
+```
+POST http://localhost:8080/pay
+Content-Type: application/json
+
+{
+  "account": "xiaoming",
+  "type": 0,
+  "product": "1234",
+  "amount": 123
+}
+```
+响应返回
+```json
+{
+  "orderId": 12,
+  "orderState": "ORDER_WAIT_SEND"
+}
+```
+#### 发送订单
+请求调用
+```
+GET http://localhost:8080/send?oid=12
+```
+响应报文
+```json
+{
+  "orderId": 12,
+  "orderState": "ORDER_WAIT_RECEIVE"
+}
+```
+#### 用户确认订单收货
+请求调用
+```
+GET http://localhost:8080/receive?oid=12
+```
+响应报文
+```json
+{
+  "orderId": 12,
+  "orderState": "ORDER_FINISH"
+}
+```

@@ -8,15 +8,15 @@ package com.csrcb.design.order.pojo;
  */
 // 状态转化的一个控制机。状态机：初始化状态；配置我们所有状态之间的转化关系；一些持久化的操作（如：redis）
 public class Order {
-    private String orderId;
+    private Integer orderId;
     // 订单状态
     private OrderState orderState;
 
-    public String getOrderId() {
+    public Integer getOrderId() {
         return orderId;
     }
 
-    public void setOrderId(String orderId) {
+    public void setOrderId(Integer orderId) {
         this.orderId = orderId;
     }
 
