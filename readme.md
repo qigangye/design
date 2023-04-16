@@ -424,7 +424,7 @@ public class OrderStateListener {
     }
 }
 ```
-## 客户端测试
+## 客户端测试实现
 ### 订单服务层实现
 ```java
 @Service
@@ -614,3 +614,105 @@ GET http://localhost:8080/receive?oid=12
   "orderState": "ORDER_FINISH"
 }
 ```
+# 装饰者模式+代理模式（普通代理）
+部分商品支付完成更新平台币、红包发放等后续业务
+## 项目需求
+部分推销商品付款完成后，需要平台对当前用户的平台币进行更新，如淘宝的淘金币，京东商城的京豆等
+> 要求
+> 1. 平台币的更新和红包发放业务为附属功能，不能影响主支付业务逻辑
+> 2. 平台币的更新和红包发放业务**只对部分推广商品有效**，且依赖于商品的属性变更。商品属性变更，如需取消平台币的更新和发放红包业务，不可修改代码。要做到在线实时热更新
+> 3. 调用层「调用支付服务方」无需关心该商品是否需要更新平台币或者发放红包，做到与上层调用者的完全解耦
+> 4. 该逻辑为支付的附属业务，随着支付完成立即触发。但不可影响支付主逻辑
+## 装饰者模式
+> 动态地给一个对象增加一些额外的职责
+### 项目实现
+被抽象的装饰者
+```java
+public abstract class AbstractPayContext {
+    public abstract Boolean execute(PayBody payBody);
+}
+```
+被装饰者
+```java
+public class PayContext extends AbstractPayContext{
+    private PayStrategy payStrategy;
+
+    public PayContext(PayStrategy payStrategy) {
+        this.payStrategy = payStrategy;
+    }
+
+    @Override
+    public Boolean execute(PayBody payBody){
+        return this.payStrategy.pay(payBody);
+    }
+}
+```
+抽象的装饰器类
+```java
+public abstract class AbstractAddFuncDecorator extends AbstractPayContext {
+    // 这是装饰器类，专门添加新功能的（平台币、红包等其他业务）
+    private AbstractPayContext abstractPayContext = null;
+
+    public AbstractAddFuncDecorator(AbstractPayContext abstractPayContext) {
+        this.abstractPayContext = abstractPayContext;
+    }
+
+    // 装饰器开始干活
+    // 1. 做本来应该支持的事儿。支付，但是不能修改支付代码，也不能修改支付逻辑
+    @Override
+    public Boolean execute(PayBody payBody) {
+        return abstractPayContext.execute(payBody);
+    }
+
+    // 2. 做点额外的功能
+    public abstract void addtionalFunction(PayBody payBody);
+}
+```
+具体的装饰器
+```java
+public class AddFuncDecorator extends AbstractAddFuncDecorator{
+    public AddFuncDecorator(AbstractPayContext abstractPayContext) {
+        super(abstractPayContext);
+    }
+
+    @Override
+    public void addtionalFunction(PayBody payBody) {
+        String product = payBody.getProduct();
+        // 从db中获取product的详细信息
+        // 从配置中心(redis缓存)中获取产品的更新策略
+        // 根据策略更新用户平台币 或 发放红包
+        System.out.println("更新平台币成功，发送红包到用户优惠券模块成功");
+    }
+
+    // 新活儿、老活儿的逻辑组装
+    @Override
+    public Boolean execute(PayBody payBody) {
+        boolean res = super.execute(payBody); // 老活儿
+        this.addtionalFunction(payBody); // 新活儿，所有的新活儿的各种重试，失败补偿都在这一行处理
+        return res;
+    }
+}
+```
+门面模式的调用层
+```
+public static Boolean pay(PayBody payBody){
+    // 获取策略枚举
+    StrategyEnum strategyEnum = getStrategyEnum(payBody.getType());
+    if (strategyEnum == null) {
+        return false;
+    }
+    // 获取策略对象
+    PayStrategy payStrategy = StrategyFactory.getPayStrategy(strategyEnum);
+    // 生成策略的上下文
+    PayContext payContext = new PayContext(payStrategy);
+    // 装饰一下context，立马多了一个功能
+    AddFuncDecorator addFuncDecorator = new AddFuncDecorator(payContext);
+    // 进行业务逻辑处理
+    return addFuncDecorator.execute(payBody);
+}
+```
+
+
+
+
+

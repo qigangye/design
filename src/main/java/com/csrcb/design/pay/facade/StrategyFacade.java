@@ -1,5 +1,6 @@
 package com.csrcb.design.pay.facade;
 
+import com.csrcb.design.pay.additionalDecorator.AddFuncDecorator;
 import com.csrcb.design.pay.pojo.PayBody;
 import com.csrcb.design.pay.strategy.PayStrategy;
 import com.csrcb.design.pay.strategyContext.PayContext;
@@ -26,8 +27,10 @@ public class StrategyFacade {
         PayStrategy payStrategy = StrategyFactory.getPayStrategy(strategyEnum);
         // 生成策略的上下文
         PayContext payContext = new PayContext(payStrategy);
+        // 装饰一下context，立马多了一个功能
+        AddFuncDecorator addFuncDecorator = new AddFuncDecorator(payContext);
         // 进行业务逻辑处理
-        return payContext.execute(payBody);
+        return addFuncDecorator.execute(payBody);
     }
 
     private static StrategyEnum getStrategyEnum(int type) {
