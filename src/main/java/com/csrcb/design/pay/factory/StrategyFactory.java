@@ -1,4 +1,4 @@
-package com.csrcb.design.pay.strategyFactory;
+package com.csrcb.design.pay.factory;
 
 import com.csrcb.design.pay.strategy.PayStrategy;
 import com.csrcb.design.pay.strategyEnum.StrategyEnum;
@@ -20,6 +20,7 @@ public class StrategyFactory {
             try {
                 // 每次获取都需要进行一次反射。需要优化调整(结合单例模式)
                 payStrategy = (PayStrategy) Class.forName(strategyEnum.getValue()).newInstance();
+                strategyMaps.put(strategyEnum.getValue(), payStrategy);
             } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
                 //异常
                 throw new RuntimeException(e);

@@ -614,7 +614,7 @@ GET http://localhost:8080/receive?oid=12
   "orderState": "ORDER_FINISH"
 }
 ```
-# 装饰者模式+代理模式（普通代理）
+# 装饰者模式 + 享元模式
 部分商品支付完成更新平台币、红包发放等后续业务
 ## 项目需求
 部分推销商品付款完成后，需要平台对当前用户的平台币进行更新，如淘宝的淘金币，京东商城的京豆等
@@ -711,7 +711,57 @@ public static Boolean pay(PayBody payBody){
     return addFuncDecorator.execute(payBody);
 }
 ```
+## 享元模式（享元工厂模式）
+> 优化对象的频繁创建问题
+```
+// 双十一的时候，有大量的用户进行下单（千万级），就会造成千万级的pay接口调用
+// 可惜，此处代码有两个new关键字 （new PayContext(payStrategy) 和 new AddFuncDecorator(payContext)）
+// 如果瞬时间有几十万的并发进来，那么会创建几十万的context对象和addFun对象，造成 年轻代的eden区的频繁对象创建
+// 虽然说调用完了就进行了对象的垃圾回收，但是这么多的访问对象进来就会造成 minorGC
+// 1. 单例模式？Paycontext创建是基于payStrategy，不止一种，单例不行，AddFuncDecorator是基于payContext创建的，因此它也是不止一种
+// 2. 享元模式。享元模式是单例模式的一种思想升级。单例模式，正对的是同一种对象，没有人格不同的细节；享元模式，正对多个对象。
+// 多个对象：同一种class，但是里面的属性有些许不同。PayContext是同一种帝乡，PayContext在细节上有不同(payStrategy)
+// 是否可以知道PayContext的种类的数量呢，目前有三种。享元模式能够对这可控数量的有不同细节的同一种Class进行共享，保证我们的程序不频繁的创建对象
+public static Boolean pay(PayBody payBody){
+    // 获取策略枚举
+    StrategyEnum strategyEnum = getStrategyEnum(payBody.getType());
+    if (strategyEnum == null) {
+        return false;
+    }
+    // 获取策略对象
+    PayStrategy payStrategy = StrategyFactory.getPayStrategy(strategyEnum);
+    // 生成策略的上下文
+    PayContext payContext = new PayContext(payStrategy);
+    // 装饰一下context，立马多了一个功能
+    AddFuncDecorator addFuncDecorator = new AddFuncDecorator(payContext);
+    // 进行业务逻辑处理
+    return addFuncDecorator.execute(payBody);
+}
+```
+### 实操
+```java
+public class AddFuncFactory {
+    // 工厂目的——生产AddFuncDecorator；「生产多个AddFuncDecorator->用来享元」
+    // key 应该是能够和AbstractAddFuncDecorator 做成对应的东西
+    // 由于策略只有三种，这个map最多保存三个对象。
+    public final static Map<PayContext, AbstractAddFuncDecorator> maps = new ConcurrentHashMap<>();
 
+    public static AbstractAddFuncDecorator getAddFunc(PayContext payContext){
+        if (maps.get(payContext) == null) {
+            AddFuncDecorator addFuncDecorator = new AddFuncDecorator(payContext);
+            maps.put(payContext, addFuncDecorator);
+        }
+        return maps.get(payContext);
+    }
+}
+```
+```
+public static Boolean pay(PayBody payBody){
+    ...
+    // 装饰一下context，立马多了一个功能
+    AddFuncDecorator addFuncDecorator = (AddFuncDecorator) AddFuncFactory.getAddFunc(payContext);
+}
+```
 
 
 
