@@ -293,7 +293,7 @@ public class SuggestBusinessHandlerProcess {
 suggest.business.handler=com.csrcb.design.handler.PersonalCheckHandler,com.csrcb.design.handler.CityCheckHandler,com.csrcb.design.handler.RecentCheckHandler,com.csrcb.design.handler.NewUserCheckHandler
 ```
 ## 优缺点
-* 责任链模式非常显著的优点是将请求和处理分开。请求者可以不知道是谁出里的，处理者可以不用知道请求的全貌，两者解耦，提高系统的灵活性
+* 责任链模式非常显著的优点是将请求和处理分开。请求者可以不知道是谁处理的，处理者可以不用知道请求的全貌，两者解耦，提高系统的灵活性
 * 责任链的缺点：一是性能问题，每个请求都是从链头遍历到链尾，特别是链比较长的时候，性能是一个非常大的问题；二是调试不方便，特别是链条比较长、环节比较多的时候。
 # 状态模式 + 观察者模式
 > 项目需求：用户从开始下订单，到支付完成，再到物流发货，最终用户确认收货；整个流程涉及到很多订单状态，需要通过代码对订单状态进行管理。
