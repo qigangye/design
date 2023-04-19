@@ -1,10 +1,9 @@
 package com.csrcb.design.controller;
 
+import com.csrcb.design.pojo.TicketParam;
 import com.csrcb.design.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -22,4 +21,10 @@ public class UserController {
     public List<String> suggestBusiness(@RequestParam String username){
         return userService.suggestBusiness(username);
     }
+
+    @PostMapping("/ticket")
+    public Object getTicket(@RequestBody TicketParam ticketParam){
+        return userService.getTicket(ticketParam);
+    }
+
 }
