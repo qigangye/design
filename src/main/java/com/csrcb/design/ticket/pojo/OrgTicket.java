@@ -1,6 +1,6 @@
 package com.csrcb.design.ticket.pojo;
 
-public class OrgTicket {
+public class OrgTicket implements Cloneable{
     private String type;
     private String footer;
 
@@ -65,5 +65,16 @@ public class OrgTicket {
 
     public void setBankInfo(String bankInfo) {
         this.bankInfo = bankInfo;
+    }
+
+    @Override
+    public OrgTicket clone() {
+        OrgTicket orgTicket = null;
+        try {
+            orgTicket = (OrgTicket) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+        return orgTicket;
     }
 }

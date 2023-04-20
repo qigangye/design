@@ -2,7 +2,7 @@
 > 项目需求：用户支付完成后，部分企业用户或个人账户需要开电子增值税发票，实现该功能
 > 1. 由于电子增值税发票所需内容较多，而且随国家政策可能有所修改，发票内容的添加删除及后台对象的组装尽量做到灵活
 > 2. 发票开具不是高并发访问接口且无法缓存，尽量保证发票创建的性能
-## 项目代码实现
+## 项目代码实现（建造者模式）
 pojo类，个人发票以及公司发票
 ```java
 @Data
@@ -142,3 +142,51 @@ public class UserService {
     }
 }
 ```
+## 原型模式
+上述的builder中有公共部分，可以提取，定义一个常量类包含两种类型（个人/对公发票）的公共信息
+```java
+public class TicketConstant {
+    // 保存只具有公共属性的队形，供clone使用
+    public static PsnTicket psnTicket = new PsnTicket();
+    public static OrgTicket orgTicket = new OrgTicket();
+    
+    static {
+        psnTicket.setType("type");
+        psnTicket.setFooter("footer");
+        orgTicket.setType("type");
+        orgTicket.setFooter("footer");
+    }
+}
+```
+OrgTicket类和PsnTicket类分别实现Cloneable接口
+```java
+public class OrgTicket implements Cloneable{
+    @Override
+    public OrgTicket clone() {
+        OrgTicket orgTicket = null;
+        try {
+            orgTicket = (OrgTicket) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+        return orgTicket;
+    }
+}
+// PsnTicket也是
+```
+抽象建造者AbstractTicketBuilder去除setCommon方法，对应的两个具体建造者也去除实现，不过在建造内部的属性不再new而是使用clone去创建一个
+```java
+public class PsnTicketBuilder extends AbstractTicketBuilder<PsnTicket> {
+    private PsnTicket psnTicket = TicketConstant.psnTicket.clone();  // new 关键字  改成clone模式，只clone我们的不可变部分，对于可变部分和自定义用户提交部分，不进行clone
+
+    //...
+}
+```
+```java
+public class OrgTicketBuilder extends AbstractTicketBuilder<OrgTicket> {
+    private OrgTicket orgTicket = TicketConstant.orgTicket.clone();  // new 关键字  改成clone模式，只clone我们的不可变部分，对于可变部分和自定义用户提交部分，不进行clone
+    
+    // ...
+}
+```
+

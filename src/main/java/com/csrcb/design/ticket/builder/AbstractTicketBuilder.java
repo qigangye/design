@@ -1,7 +1,7 @@
 package com.csrcb.design.ticket.builder;
 
 public abstract class AbstractTicketBuilder<T> {
-    public abstract void setCommon(String type, String footer);
+//    public abstract void setCommon(String type, String footer);
 
     public abstract void setParam(String account, String title);
 

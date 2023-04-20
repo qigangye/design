@@ -4,9 +4,9 @@ public class TicketParam {
     private String account; // 真实的项目中，account是set到用户的请求头里的,header里。过我们的网关的时候就已经记录了
     private String title;
     private String bankInfo;
-    private String footer;
+//    private String footer;
     private String productId;
-    private String type;
+//    private String type;
 
     public String getAccount() {
         return account;
@@ -32,13 +32,13 @@ public class TicketParam {
         this.bankInfo = bankInfo;
     }
 
-    public String getFooter() {
-        return footer;
-    }
-
-    public void setFooter(String footer) {
-        this.footer = footer;
-    }
+//    public String getFooter() {
+//        return footer;
+//    }
+//
+//    public void setFooter(String footer) {
+//        this.footer = footer;
+//    }
 
     public String getProductId() {
         return productId;
@@ -48,11 +48,11 @@ public class TicketParam {
         this.productId = productId;
     }
 
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
+//    public String getType() {
+//        return type;
+//    }
+//
+//    public void setType(String type) {
+//        this.type = type;
+//    }
 }

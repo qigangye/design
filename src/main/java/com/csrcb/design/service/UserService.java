@@ -40,13 +40,13 @@ public class UserService {
     public Object getTicket(TicketParam ticketParam) {
         AbstractTicketBuilder builder = null;
         String bankInfo = null;
-        if (null == ticketParam.getBankInfo()) {
+        if (null != ticketParam.getBankInfo()) {
             bankInfo = "check information from other channel interface";
-            builder = new PsnTicketBuilder();
-        } else {
             builder = new OrgTicketBuilder();
+        } else {
+            builder = new PsnTicketBuilder();
         }
-        builder.setCommon(ticketParam.getType(), ticketParam.getFooter());
+//        builder.setCommon(ticketParam.getType(), ticketParam.getFooter());
         builder.setParam(ticketParam.getAccount(), ticketParam.getTitle());
         String content = "from config center";
         String product = "from db";

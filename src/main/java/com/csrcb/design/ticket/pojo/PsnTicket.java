@@ -1,6 +1,6 @@
 package com.csrcb.design.ticket.pojo;
 
-public class PsnTicket {
+public class PsnTicket implements Cloneable{
     private String type;
     private String footer;
 
@@ -56,5 +56,16 @@ public class PsnTicket {
 
     public void setProduct(String product) {
         this.product = product;
+    }
+
+    @Override
+    public PsnTicket clone() {
+        PsnTicket psnTicket = null;
+        try {
+            psnTicket = (PsnTicket) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+        return psnTicket;
     }
 }
