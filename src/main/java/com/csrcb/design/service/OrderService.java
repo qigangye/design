@@ -1,5 +1,7 @@
 package com.csrcb.design.service;
 
+import com.csrcb.design.auditlog.OrderLogProcessor;
+import com.csrcb.design.auditlog.PayLogProcessor;
 import com.csrcb.design.order.pojo.Order;
 import com.csrcb.design.order.pojo.OrderState;
 import com.csrcb.design.order.pojo.OrderStateChangeAction;
@@ -28,6 +30,12 @@ public class OrderService {
     @Autowired
     private StateMachinePersister<OrderState, OrderStateChangeAction, Order> stateMachinePersister;
 
+    @Autowired
+    private PayLogProcessor payLogProcessor;
+
+    @Autowired
+    private OrderLogProcessor orderLogProcessor;
+
     // 模拟一个存储（示例，不做连接数据库展示）
     private List<Order> orders = new ArrayList<>();
     public Order createOrder(Integer oid) {
@@ -36,6 +44,7 @@ public class OrderService {
         order.setOrderId(oid);
         // 创建的order持久化至数据库中，防止下次访问的时候查询不到
         orders.add(order);//模拟存储到DB
+        orderLogProcessor.processAuditLog("account", "createOrder", oid.toString());
         return order;
     }
 
@@ -48,6 +57,7 @@ public class OrderService {
         flag = StrategyFacade.pay(payBody);
         if (flag) {
             Order order = orders.get(0);// 模拟从DB获取的数据
+            payLogProcessor.processAuditLog(payBody.getAccount(), "pay", order.getOrderId().toString());
             Message message = MessageBuilder.withPayload(OrderStateChangeAction.PAY_ORDER).setHeader("order", order).build();
             // 发送消息
             if (changeStateAction(message, order)){
