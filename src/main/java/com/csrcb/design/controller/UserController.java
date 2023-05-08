@@ -27,4 +27,9 @@ public class UserController {
         return userService.getTicket(ticketParam);
     }
 
+    @PostMapping("/login")
+    public Boolean login(@RequestParam String name, @RequestParam String pwd, @RequestParam String type){
+        return userService.login(name, pwd, type);
+    }
+
 }

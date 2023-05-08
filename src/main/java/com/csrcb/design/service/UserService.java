@@ -1,6 +1,10 @@
 package com.csrcb.design.service;
 
 import com.csrcb.design.handler.SuggestBusinessHandlerProcess;
+import com.csrcb.design.login.abstractlogin.AbstractLoginProcessor;
+import com.csrcb.design.login.abstractlogin.ThirdPartLogin;
+import com.csrcb.design.login.implementor.LoginFunc;
+import com.csrcb.design.login.implementor.WbLoginFunc;
 import com.csrcb.design.pojo.TicketParam;
 import com.csrcb.design.pojo.UserInfo;
 import com.csrcb.design.ticket.builder.AbstractTicketBuilder;
@@ -55,5 +59,16 @@ public class UserService {
         builder.setBankInfo(bankInfo);
         // 详细的逻辑细节控制以及从配置中心或者db获取逻辑步骤就是简单的crud业务处理，自己明白即可
         return builder.buildTicket();
+    }
+
+    public Boolean login(String name, String pwd, String type) {
+        // 此处不使用策略或者享元模式封装，为了演示桥接模式的客户端调用
+        if (type.equals("wb")) {
+            LoginFunc lf = new WbLoginFunc();
+            AbstractLoginProcessor loginProcessor = new ThirdPartLogin(lf);
+            return loginProcessor.loginExecute(name, pwd, type);
+        }
+        // ...支付宝等后续三方
+        return true;
     }
 }
